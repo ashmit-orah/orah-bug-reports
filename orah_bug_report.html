@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Orah — Bug Board Report 2026</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0f172a;--slate:#1e293b;--mid:#475569;--muted:#94a3b8;
+  --bg:#f1f5f9;--card:#fff;--border:#e2e8f0;
+  --p0:#dc2626;--p1:#ea580c;--p2:#ca8a04;--p3:#16a34a;--p4:#0891b2;
+  --radius:10px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--slate);font-size:14px;line-height:1.5}
+
+/* ── Header ── */
+.hdr{background:var(--navy);padding:18px 32px;display:flex;align-items:center;gap:20px;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.3)}
+.logo svg{height:38px;width:auto}
+.hdr-title{flex:1}
+.hdr-title h1{color:#f8fafc;font-size:18px;font-weight:700}
+.hdr-title p{color:var(--muted);font-size:12px;margin-top:2px}
+.btn-print{background:linear-gradient(135deg,#00C896,#0091FF);color:#fff;border:none;padding:9px 20px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;transition:opacity .2s}
+.btn-print:hover{opacity:.85}
+
+/* ── Tabs ── */
+.tabs-nav{background:#fff;border-bottom:2px solid var(--border);display:flex;gap:0;overflow-x:auto;padding:0 32px;position:sticky;top:73px;z-index:99;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.tab-btn{padding:14px 18px;font-size:13px;font-weight:600;color:var(--mid);border:none;background:none;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;transition:color .2s,border-color .2s}
+.tab-btn:hover{color:var(--slate)}
+.tab-btn.active{color:#0f172a;border-bottom-color:#0091FF}
+.tab-panel{display:none;padding:28px 32px;max-width:1300px;margin:0 auto}
+.tab-panel.active{display:block}
+
+/* ── KPI Cards ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:28px}
+.kpi{background:var(--card);border-radius:var(--radius);padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.07);border-left:4px solid var(--border)}
+.kpi-val{font-size:32px;font-weight:800;line-height:1;color:var(--navy)}
+.kpi-lbl{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-top:4px}
+.kpi-sub{font-size:11px;color:var(--mid);margin-top:2px}
+
+/* ── Cards ── */
+.card{background:var(--card);border-radius:var(--radius);padding:22px;box-shadow:0 1px 3px rgba(0,0,0,.07);margin-bottom:20px}
+.card-title{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.card-title span{font-size:11px;font-weight:400;color:var(--muted);margin-left:4px}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px}
+@media(max-width:900px){.two-col,.three-col{grid-template-columns:1fr}}
+
+/* ── Tables ── */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-weight:600;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:.5px;padding:8px 10px;background:#f8fafc;border-bottom:2px solid var(--border)}
+td{padding:8px 10px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+tr:hover td{background:#f8fafc}
+tr:last-child td{border-bottom:none}
+.imp{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;color:#fff}
+.heatmap td{text-align:center;font-weight:600;font-size:13px}
+.heatmap th:first-child{text-align:left}
+.heatmap td:first-child{text-align:left;font-weight:500}
+
+/* ── Chart containers ── */
+.chart-wrap{position:relative;height:260px}
+.chart-wrap-lg{position:relative;height:320px}
+
+/* ── Dev Pipeline ── */
+.filter-bar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;align-items:center}
+.filter-bar label{font-size:12px;font-weight:600;color:var(--mid);text-transform:uppercase;letter-spacing:.4px}
+.filter-bar select{padding:7px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff;color:var(--slate);cursor:pointer}
+.filter-bar select:focus{outline:2px solid #0091FF;border-color:transparent}
+.pod-card{border-radius:var(--radius);margin-bottom:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.07)}
+.pod-hdr{display:flex;align-items:center;gap:12px;padding:14px 18px;color:#fff;cursor:pointer;user-select:none}
+.pod-hdr-title{font-size:15px;font-weight:700;flex:1}
+.pod-badge{background:rgba(255,255,255,.2);border-radius:20px;padding:3px 12px;font-size:12px;font-weight:600}
+.pod-chevron{font-size:18px;transition:transform .25s}
+.pod-chevron.open{transform:rotate(180deg)}
+.pod-body{padding:4px 18px 18px;background:#fff}
+.status-hdr{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;padding:4px 12px;border-radius:6px;color:#fff;margin:14px 0 10px}
+.status-hdr .sc{font-weight:400;opacity:.85;margin-left:4px}
+.sprint-lbl{font-size:11px;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:.5px;margin:10px 0 6px 6px;display:flex;align-items:center;gap:6px}
+.sprint-lbl::before{content:'';display:inline-block;width:5px;height:5px;border-radius:50%;background:#94a3b8}
+.stale{font-size:10px;font-weight:700;color:#ef4444;background:#fef2f2;border:1px solid #fecaca;border-radius:4px;padding:1px 5px}
+.bug-tbl{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:4px}
+.bug-tbl th{padding:6px 10px;background:#f8fafc;font-size:11px;font-weight:600;color:var(--mid);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border)}
+.bug-tbl td{padding:7px 10px;border-bottom:1px solid #f8fafc;vertical-align:top;line-height:1.4}
+.bug-tbl tr:last-child td{border-bottom:none}
+.bug-tbl tr:hover td{background:#f8fafc}
+.bug-row[data-hidden]{display:none}
+.no-results{padding:16px;text-align:center;color:var(--muted);font-size:13px;display:none}
+
+/* ── Observations ── */
+.obs-list{list-style:none;display:flex;flex-direction:column;gap:14px}
+.obs-item{display:flex;gap:14px;align-items:flex-start;padding:14px 16px;border-radius:8px;background:#f8fafc;border-left:4px solid #0091FF}
+.obs-icon{font-size:20px;flex-shrink:0;margin-top:1px}
+.obs-title{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:3px}
+.obs-body{font-size:13px;color:var(--mid);line-height:1.55}
+.warn{border-left-color:#ea580c}.warn .obs-icon{color:#ea580c}
+.good{border-left-color:#16a34a}.good .obs-icon{color:#16a34a}
+.info .obs-icon{color:#0091FF}
+.tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;color:#fff;margin-right:4px}
+
+/* ── Print ── */
+@media print{
+  .hdr,.tabs-nav,.btn-print,.filter-bar{display:none!important}
+  .tab-panel{display:block!important;page-break-after:always;padding:20px}
+  .pod-body{display:block!important}
+  body{background:#fff}
+}
+</style>
+</head>
+<body>
+<!-- HEADER -->
+<header class="hdr">
+  <div class="logo">
+    <svg viewBox="0 0 130 40" height="40" xmlns="http://www.w3.org/2000/svg">
+      <!-- Dark navy icon circle -->
+      <circle cx="20" cy="20" r="20" fill="#1a2744"/>
+      <!-- White arc: ~300deg, gap at upper-right (1-2 o'clock), counterclockwise from 2-o'clock to 1-o'clock -->
+      <path d="M 27.8,15.5 A 9,9 0 1,0 24.5,12.2" stroke="white" stroke-width="3.4" fill="none" stroke-linecap="round"/>
+      <!-- Small white dot at 2-o'clock end of gap -->
+      <circle cx="27.8" cy="15.5" r="2.5" fill="white"/>
+      <!-- "orah" wordmark in white -->
+      <text x="47" y="27" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-weight="800" font-size="22" fill="white">orah</text>
+    </svg>
+  </div>
+  <div class="hdr-title">
+    <h1>Bug Board Dashboard</h1>
+    <p>Live data export &nbsp;·&nbsp; As of 2026-03-23</p>
+  </div>
+  <button class="btn-print" onclick="window.print()">⬇ Download PDF</button>
+</header>
+
+<!-- TABS NAV -->
+<nav class="tabs-nav" id="tabsNav">
+  <button class="tab-btn active" data-tab="t1">Executive Summary</button>
+  <button class="tab-btn" data-tab="t2">In-Progress Analysis</button>
+  <button class="tab-btn" data-tab="t3">Impact Matrix &amp; App Areas</button>
+  <button class="tab-btn" data-tab="t4">Velocity &amp; Trend</button>
+  <button class="tab-btn" data-tab="t5">Observations</button>
+  <button class="tab-btn" data-tab="t6">Dev Pipeline Drill-Down</button>
+</nav>
+
+<!-- ═══ TAB 1: EXECUTIVE SUMMARY ═══ -->
+<div class="tab-panel active" id="t1">
+  <div class="kpi-grid" id="kpiGrid"></div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">Status Distribution <span>all 1,523 tickets</span></div>
+      <div class="chart-wrap"><canvas id="cStatusAll"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">In-Progress by POD <span>100 tickets</span></div>
+      <div class="chart-wrap"><canvas id="cPodAll"></canvas></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">In-Progress by Business Impact <span>100 tickets</span></div>
+    <div class="chart-wrap"><canvas id="cImpactAll"></canvas></div>
+  </div>
+</div>
+
+<!-- ═══ TAB 2: IN-PROGRESS ANALYSIS ═══ -->
+<div class="tab-panel" id="t2">
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">Status Breakdown <span>in-progress only</span></div>
+      <div class="chart-wrap"><canvas id="cIPStatus"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">POD Breakdown <span>in-progress only</span></div>
+      <div class="chart-wrap"><canvas id="cIPPod"></canvas></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Pending Customer Confirmation (PCC) — Support Pipeline</div>
+    <div class="kpi-grid" style="margin-bottom:0" id="pccKpi"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">In-Progress Status Detail</div>
+    <div class="tbl-wrap" id="ipStatusTable"></div>
+  </div>
+</div>
+
+<!-- ═══ TAB 3: IMPACT MATRIX ═══ -->
+<div class="tab-panel" id="t3">
+  <div class="card">
+    <div class="card-title">Sprint × Business Impact <span>in-progress tickets</span></div>
+    <div class="tbl-wrap" id="sprintImpactTable"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">POD × Business Impact <span>in-progress tickets</span></div>
+    <div class="tbl-wrap" id="podImpactTable"></div>
+  </div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">Application Area Distribution <span>2026 reported tickets</span></div>
+      <div class="chart-wrap-lg"><canvas id="cAppArea"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Application Area <span>in-progress only</span></div>
+      <div class="chart-wrap-lg"><canvas id="cAppInp"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TAB 4: VELOCITY & TREND ═══ -->
+<div class="tab-panel" id="t4">
+  <div class="kpi-grid" id="velocityKpi"></div>
+  <div class="card">
+    <div class="card-title">2026 Monthly Velocity — Fixed vs Reported</div>
+    <div class="chart-wrap-lg"><canvas id="cVelocity"></canvas></div>
+  </div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">Ticket Aging Distribution <span>in-progress only</span></div>
+      <div class="chart-wrap"><canvas id="cAging"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Aging Summary</div>
+      <div id="agingSummary"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TAB 5: OBSERVATIONS ═══ -->
+<div class="tab-panel" id="t5">
+  <div class="card">
+    <div class="card-title">Key Observations &amp; Recommendations</div>
+    <ul class="obs-list" id="obsList"></ul>
+  </div>
+</div>
+
+<!-- ═══ TAB 6: DEV PIPELINE DRILL-DOWN ═══ -->
+<div class="tab-panel" id="t6">
+  <div style="margin-bottom:6px">
+    <h2 style="font-size:17px;font-weight:700;color:var(--navy)">Development Pipeline — POD Drill-Down</h2>
+    <p style="font-size:12px;color:var(--muted);margin-top:3px">In-progress dev tickets only &nbsp;|&nbsp; Status: Working on in Sprint &middot; Investigating &middot; Awaiting Sprint Inclusion &middot; Verified Issue</p>
+  </div>
+  <div id="devSummaryBar" style="background:var(--navy);border-radius:10px;padding:16px 24px;display:flex;gap:0;margin-bottom:20px;flex-wrap:wrap"></div>
+  <div class="filter-bar">
+    <label>Filter:</label>
+    <select id="fPod"><option value="">All PODs</option></select>
+    <select id="fImpact"><option value="">All Impacts</option></select>
+    <select id="fStatus"><option value="">All Statuses</option></select>
+    <select id="fSprint"><option value="">All Sprints</option></select>
+    <span id="fCount" style="font-size:12px;color:var(--muted);margin-left:8px"></span>
+    <button onclick="resetFilters()" style="margin-left:auto;padding:6px 14px;border:1px solid var(--border);border-radius:8px;background:#fff;font-size:12px;cursor:pointer;color:var(--mid)">Reset</button>
+  </div>
+  <div id="podDrilldown"></div>
+</div>
+
+<script>
+const D = {"total":1523,"in_prog":100,"pcc":25,"done":772,"new_t":1,"fixed_2026":237,"dev_total":86,"stale":43,"avg_age":38.5,"status_all":{"New Ticket":1,"Awaiting Sprint Inclusion":49,"Working on in Sprint":24,"Investigating":3,"Verified Issue":10,"Triage":6,"Pending Customer Confirmation":25,"Need More Info":8,"Done":772,"Abandoned":188,"Duplicate":40,"Not a Bug":306,"Feature Request/Feedback":78,"z_Blocked":5,"z_Security Incident":6,"Issue with 3rd Party":2},"ip_status":{"Awaiting Sprint Inclusion":49,"Working on in Sprint":24,"Investigating":3,"Verified Issue":10,"Triage":6,"Need More Info":8},"ip_pod":{"Nurture Pod":30,"S. Growth Pod":37,"Platform Pod":27,"Unassigned":6},"ip_impact":{"P4":3,"P1":33,"P2":39,"P3":11,"P0":14},"sprint_impact":{"Nurture Bug Backlog":{"P4":1,"P2":3,"P3":1,"P1":3,"P0":1},"Sprint 144 [Active Mar 30 - Apr 13]":{"P1":3,"P2":8,"P0":2},"Sprint 106 [Active 12 Mar - 25 Mar]":{"P2":8,"P1":10,"P0":1},"Supergrowth Bug Backlog":{"P3":4,"P0":2,"P2":1},"Sprint 116 [Future Mar 25 - Apr 07]":{"P2":2,"P3":1,"P1":2},"Sprint 115 [Active Mar 11 - Mar 24]":{"P2":7,"P1":4,"P0":2},"Sprint 145 [ Future Apr 14 - Apr 27]":{"P4":1,"P2":2,"P1":4,"P0":2},"Sprint 114 [Done Feb 25 - Mar 10]":{"P1":1},"Sprint 141 [Done Feb 10 - Feb 23]":{"P2":2},"Sprint 107 [Future 26 Mar - 08 Apr]":{"P3":1},"Feature Request Backlog":{"P2":1},"Sprint 143 [Done Mar 10 - Mar 20]":{"P0":1,"P1":3},"(No Sprint)":{"P2":3,"P3":2,"P1":1},"Sprint 107, Nurture Bug Backlog":{"P4":1},"Platform Bug Backlog":{"P2":1,"P0":2,"P3":1},"Sprint 142 [Done Feb 24 - Mar 09]":{"P2":1,"P1":1},"Sprint 105 [Done]":{"P0":1},"Sprint 95":{"P1":1},"Sprint: 98":{"P3":1}},"top_sprints":["Sprint 106 [Active 12 Mar - 25 Mar]","Sprint 144 [Active Mar 30 - Apr 13]","Sprint 115 [Active Mar 11 - Mar 24]","Sprint 116 [Future Mar 25 - Apr 07]","Sprint 107 [Future 26 Mar - 08 Apr]","Sprint 143 [Done Mar 10 - Mar 20]","Sprint 141 [Done Feb 10 - Feb 23]","Sprint 142 [Done Feb 24 - Mar 09]","Sprint 114 [Done Feb 25 - Mar 10]","Sprint 105 [Done]","Nurture Bug Backlog","Sprint 145 [ Future Apr 14 - Apr 27]"],"pod_impact":{"Nurture Pod":{"P4":2,"P2":13,"P1":10,"P3":2,"P0":3},"S. Growth Pod":{"P1":11,"P3":4,"P2":14,"P4":1,"P0":7},"Platform Pod":{"P2":9,"P1":11,"P3":3,"P0":4},"Unassigned":{"P2":3,"P3":2,"P1":1}},"app_area":{"Staff App":207,"Integrate App":45,"Unknown":19,"Parent App":13,"Checkpoint App":9,"Student App":8,"Desktop, Staff App":2,"Desktop":1},"app_inp":{"Staff App":71,"Integrate App":9,"Parent App":7,"Checkpoint App":5,"Student App":4,"Unknown":2,"Desktop":1,"Desktop, Staff App":1},"monthly_fixed":{"Jan":41,"Feb":97,"Mar":99,"Apr":0,"May":0,"Jun":0,"Jul":0,"Aug":0,"Sep":0,"Oct":0,"Nov":0,"Dec":0},"monthly_rep":{"Jan":138,"Feb":110,"Mar":58,"Apr":0,"May":0,"Jun":0,"Jul":0,"Aug":0,"Sep":0,"Oct":0,"Nov":0,"Dec":0},"age_buckets":{"0–7d":16,"8–14d":9,"15–30d":20,"31–60d":42,"61–90d":7,"90+d":6},"tree":{"S. Growth Pod":{"Working on in Sprint":{"Sprint 144 [Active Mar 30 - Apr 13]":[{"name":"Intermittent Kiosk Slowness on iPads – Pass Creation Timing Out (Multiple Devices)","impact":"P0"},{"name":"iPads severely slowing down recently","impact":"P2"}],"Sprint 141 [Done Feb 10 - Feb 23]":[{"name":"The passes page filtering is showing group dates that do not match the filter","impact":"P2"}],"Sprint 143 [Done Mar 10 - Mar 20]":[{"name":"Past Rolls Not Displaying in Roll History","impact":"P0"}],"Supergrowth Bug Backlog":[{"name":"Search Not Returning Results in Public Form Submissions (Custom Field)","impact":"P3"}]},"Investigating":{"Sprint 144 [Active Mar 30 - Apr 13]":[{"name":"Eton College reports two issues","impact":"P1"}]},"Awaiting Sprint Inclusion":{"Sprint 144 [Active Mar 30 - Apr 13]":[{"name":"Unable to edit or delete active excuse – error shown when modifying end time","impact":"P0"},{"name":"Location not showing on student records page until after the roll is taken.","impact":"P1"},{"name":"Ascham: student profiles / passes are showing inaccurate information.","impact":"P1"},{"name":"Scheduled pass showed on class roll","impact":"P2"},{"name":"Absence Pass Start Time Hardcoded to 7am Causes Error for Parent App","impact":"P2"},{"name":"Non-live roll completion unexpectedly ends active passes (“Excused on a Pass”)","impact":"P2"},{"name":"Recurring passes not ending","impact":"P2"},{"name":"Custom date field (“Passport Expiry Date”) date picker not functional for new students","impact":"P2"},{"name":"Student records screen loading slow","impact":"P2"},{"name":"Parent Permission Form submission fails for parents with multiple students","impact":"P2"}],"Sprint 141 [Done Feb 10 - Feb 23]":[{"name":"Pass Deletion Overwrites Teacher-Entered Attendance","impact":"P2"}],"Sprint 143 [Done Mar 10 - Mar 20]":[{"name":"Checkpoint iPad app crashes when selecting return time for weekend passes","impact":"P1"}],"Sprint 145 [ Future Apr 14 - Apr 27]":[{"name":"Reason code change is not updating in insights","impact":"P0"},{"name":"Passes activating immediately from Home Board and incorrectly ending “Absent All Day” passes","impact":"P0"},{"name":"Form editor loses saved changes and throws “Something went wrong / Could not update form” errors","impact":"P1"},{"name":"Roll Check Reminder Sent After Roll Was Already Completed","impact":"P1"},{"name":"Filtering and Daily Attendance issue on Student Records Page","impact":"P1"},{"name":"Student unable to submit leave request via iPhone app (insufficient context due to incomplete reproduction data)","impact":"P1"},{"name":"Weekend Leave is at times not showing any locations in the dropdown menu","impact":"P2"},{"name":"NFC tiles are not allowing students to sign back in (settings appear correct)","impact":"P2"},{"name":"Staff “Recent Activity” not updating despite daily logins","impact":"P4"}],"Supergrowth Bug Backlog":[{"name":"Unable to delete overdue recurring leaves (ECRC Leave) — deletion fails with error for Winnie Hughes","impact":"P3"},{"name":"Admin Console shows error when updating Bed Number, but change saves in Homeboard (Qin Yiming)","impact":"P3"},{"name":"When entering attendance on the mobile app, it doesn't automatically refresh","impact":"P3"}]},"Verified Issue":{"Supergrowth Bug Backlog":[{"name":"Daily attendance status shows “Excused Absent” instead of “Late” when tardy pass exists without subsequent attendance","impact":"P0"},{"name":"Rotorua Boys' High - parent seeing error message when trying to apply for leave","impact":"P2"}]}},"Nurture Pod":{"Working on in Sprint":{"Sprint 115 [Active Mar 11 - Mar 24]":[{"name":"Attendance Data Mismatch – Veracross vs Orah Aggregation Discrepancy (Tardy & Absence Counts)","impact":"P0"},{"name":"Attendance Alerts Sending Excessive Duplicate Emails for Single Student","impact":"P1"},{"name":"Attendance totals mismatch between Veracross and Orah (tardy/absence counts not matching)","impact":"P2"}]},"Investigating":{"Nurture Bug Backlog":[{"name":"Attendance alert “2 times in a row” triggering for non-consecutive days","impact":"P1"}]},"Awaiting Sprint Inclusion":{"Sprint 115 [Active Mar 11 - Mar 24]":[{"name":"Checkpoint Kiosk Quick Leave sign-out redirects to home after entering time (Weekend)","impact":"P0"},{"name":"Attendance alerts not triggered","impact":"P1"},{"name":"Attendance Graph Showing Weekend Records and Incorrect Daily Status","impact":"P1"},{"name":"Present records not pulling into attendance insights / student profile insights","impact":"P1"},{"name":"Completed attendance rolls not appearing in Activity Feed (roll records exist on group records)","impact":"P2"},{"name":"Attendance concerns are not showing sports.","impact":"P2"},{"name":"Completed Rolls Not Reflecting in Activity Feed","impact":"P2"},{"name":"Activity Feed Not Displaying All Class Roll Completions","impact":"P2"},{"name":"Homeboard Displays Parent Note Icon Instead of Sub-Category Icon for Well-Being Notes","impact":"P2"},{"name":"Activity Feed only displaying attendance from one teacher despite correct data in Veracross","impact":"P2"}],"Sprint 116 [Future Mar 25 - Apr 07]":[{"name":"Joeys Sydney - Nurture bug","impact":"P1"},{"name":"Attendance alert emails display “Absent” instead of specific attendance code (e.g., “Cut”)","impact":"P1"},{"name":"Mood check - option to opt out of follow up missing","impact":"P2"},{"name":"Lag when initiating an emergency roll from the web app.","impact":"P2"},{"name":"Call icon on boarder profile opens error page on Android app","impact":"P3"}],"Sprint 114 [Done Feb 25 - Mar 10]":[{"name":"SMS texts were not sent to staff during emergency drill","impact":"P1"}],"Feature Request Backlog":[{"name":"Staff cannot see their own Sensitive Pastoral Notes if they don't have access to ALL sensitive pastoral notes","impact":"P2"}],"Nurture Bug Backlog":[{"name":"Checkpoint app allows students to activate scheduled passes earlier than the configured activation window","impact":"P1"},{"name":"Incorrect teacher showing on Emergency Roll Record under \"Assigned Staff\"","impact":"P2"},{"name":"Student Unable to View Survey Results – “Something went wrong” Error in My Surveys","impact":"P2"},{"name":"Error when writing comment on pastoral note in student profile","impact":"P4"}]},"Verified Issue":{"Nurture Bug Backlog":[{"name":"Android (Pixel 7) app loads web interface and Emergency Roll filters are unresponsive","impact":"P0"},{"name":"Inconsistent total attendance days when summing attendance metrics in Insights export","impact":"P1"},{"name":"Watchlist custom date/time selection overrides user input (e.g. 8:00AM changes automatically to another time)","impact":"P2"},{"name":"Error when attempting to Edit Individual Staff Permissions","impact":"P3"}],"Sprint 107, Nurture Bug Backlog":[{"name":"Homeboard remains filtered to tagged subset after exiting a roll","impact":"P4"}]}},"Platform Pod":{"Working on in Sprint":{"Sprint 106 [Active 12 Mar - 25 Mar]":[{"name":"InformaCast Integration — Login loop prevents connection (scopes screen never appears)","impact":"P1"},{"name":"Class temporarily disappears and reappears in Orah during school day (Veracross sync)","impact":"P1"},{"name":"Back-to-Back Health Center Pass – Second Pass Not Excusing Attendance","impact":"P1"},{"name":"Early Dismissal Pass No Longer Overwrites Teacher Attendance at End Time (Blackbaud Sync)","impact":"P1"},{"name":"Unable to Merge Duplicate Student Records (Wonde Integration – Duplicate Not Appearing in Debugger)","impact":"P1"},{"name":"Wonde Sync – Card UID field not visible + incorrect Student Type mapping (Pymble test tenant)","impact":"P1"},{"name":"Blackbaud SSO blocked in Orah mobile app – Google policy error","impact":"P1"},{"name":"Tutor groups show 0 staff in Groups page while staff appear correctly under Academic tab","impact":"P1"},{"name":"Contact Data for graduated students remains in Unify Insights","impact":"P2"},{"name":"Contact Data for graduated students remains in Unify Insights","impact":"P2"},{"name":"Area code required for SMS but does not save when you change the phone number","impact":"P2"},{"name":"Student on Active Pass Not Marked Excused in Veracross Attendance","impact":"P2"},{"name":"Reminder emails for classes not requiring attendance","impact":"P2"},{"name":"House in TASS isn't syncing to Orah","impact":"P2"},{"name":"Attendance Update Not Syncing to Veracross (Suzuki Umika – Jan 12 & 14)","impact":"P2"},{"name":"\"Connect Staff to SIS ID\" is not working / timing out","impact":"P2"}]},"Awaiting Sprint Inclusion":{"Sprint 107 [Future 26 Mar - 08 Apr]":[{"name":"Parent unable to link to student when signing in via SSO — personal email shown instead of school email","impact":"P3"}],"Platform Bug Backlog":[{"name":"Attendance records from Orah are not syncing over to FACTS","impact":"P0"},{"name":"Allergies are not showing up on Orah","impact":"P0"},{"name":"double of student, merging is required","impact":"P2"}]},"Verified Issue":{"Sprint 106 [Active 12 Mar - 25 Mar]":[{"name":"FACTS sync overwriting preferred names and triggering despite being disabled","impact":"P1"}],"Platform Bug Backlog":[{"name":"Profile photos are not syncing successfully to Orah from KAMAR via Wonde","impact":"P3"}]}},"Unassigned":{"Investigating":{"(No Sprint)":[{"name":"Specific staff user unable to upload files to student profiles despite correct permissions","impact":"P2"}]},"Verified Issue":{"(No Sprint)":[{"name":"Parent at Assumption College can still see their student's (old) Waverley College account","impact":"P3"}]}}},"pod_totals":{"S. Growth Pod":32,"Nurture Pod":30,"Platform Pod":22,"Unassigned":2},"STATUS_COLOR":{"Working on in Sprint":"#1a7f5a","Investigating":"#b45309","Awaiting Sprint Inclusion":"#1d4ed8","Verified Issue":"#6d28d9"},"POD_COLOR":{"S. Growth Pod":"#1d4ed8","Nurture Pod":"#0f766e","Platform Pod":"#7c3aed","Unassigned":"#6b7280"},"IMP_COLOR":{"P0":"#dc2626","P1":"#ea580c","P2":"#ca8a04","P3":"#16a34a","P4":"#0891b2","Unk":"#9ca3af"},"STATUS_ORD":["Working on in Sprint","Investigating","Awaiting Sprint Inclusion","Verified Issue"],"POD_ORD":["S. Growth Pod","Nurture Pod","Platform Pod","Unassigned"]};
+
+// ── Tab switching ──────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+    setTimeout(()=>window.dispatchEvent(new Event('resize')),50);
+  });
+});
+
+// ── Helpers ──────────────────────────────────────────────────────────────────────
+const IC = D.IMP_COLOR;
+const PC = D.POD_COLOR;
+const SC = D.STATUS_COLOR;
+function impBadge(i){return '<span class="imp" style="background:'+( IC[i]||'#9ca3af')+'">'+i+'</span>'}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+// ── KPI Grid ──────────────────────────────────────────────────────────────────────
+const kpis=[
+  {v:D.total,          l:'Total Tickets',          s:'all time',                col:'#0f172a'},
+  {v:D.in_prog,        l:'In-Progress',             s:'excl. New & PCC',         col:'#1d4ed8'},
+  {v:D.pcc,            l:'Pending Cust. Confirm.',  s:'support pipeline',        col:'#7c3aed'},
+  {v:D.fixed_2026,     l:'Fixed in 2026',           s:'Done status',             col:'#16a34a'},
+  {v:D.done,           l:'Total Done',              s:'all time',                col:'#0891b2'},
+  {v:D.stale,          l:'Stale Tickets',           s:'in-prog + closed sprint', col:'#dc2626'},
+];
+document.getElementById('kpiGrid').innerHTML=kpis.map(k=>
+  '<div class="kpi" style="border-left-color:'+k.col+'">'
+  +'<div class="kpi-val" style="color:'+k.col+'">'+k.v+'</div>'
+  +'<div class="kpi-lbl">'+k.l+'</div>'
+  +'<div class="kpi-sub">'+k.s+'</div>'
+  +'</div>'
+).join('');
+
+// PCC kpi
+document.getElementById('pccKpi').innerHTML=
+  '<div class="kpi" style="border-left-color:#7c3aed"><div class="kpi-val" style="color:#7c3aed">'+D.pcc+'</div><div class="kpi-lbl">PCC Tickets</div><div class="kpi-sub">Awaiting customer response</div></div>'
+  +'<div class="kpi" style="border-left-color:#475569"><div class="kpi-val" style="color:#475569">—</div><div class="kpi-lbl">Not Counted in In-Progress</div><div class="kpi-sub">Tracked separately</div></div>'
+  +'<div class="kpi" style="border-left-color:#0891b2"><div class="kpi-val" style="color:#0891b2">'+D.in_prog+'</div><div class="kpi-lbl">True In-Progress</div><div class="kpi-sub">Excl. New Ticket &amp; PCC</div></div>';
+
+// ── In-Progress Status Table ──────────────────────────────────────────────────────────────
+const ipRows = Object.entries(D.ip_status).sort((a,b)=>b[1]-a[1]);
+const ipTotal = D.in_prog;
+document.getElementById('ipStatusTable').innerHTML=
+'<table>'
++'<thead><tr><th>Status</th><th>Count</th><th>% of In-Progress</th><th>Pipeline</th></tr></thead>'
++'<tbody>'+ipRows.map(([s,c])=>{
+  const pipeline = ['Triage','Need More Info'].includes(s)?'Support':'Development';
+  const pcol = pipeline==='Support'?'#7c3aed':'#1d4ed8';
+  return '<tr><td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+(SC[s]||'#94a3b8')+';margin-right:7px"></span>'+esc(s)+'</td>'
+    +'<td><strong>'+c+'</strong></td>'
+    +'<td style="color:var(--mid)">'+( c/ipTotal*100).toFixed(1)+'%</td>'
+    +'<td><span class="tag" style="background:'+pcol+'">'+pipeline+'</span></td></tr>';
+}).join('')
++'<tr style="background:#f8fafc"><td><strong>Total</strong></td><td><strong>'+ipTotal+'</strong></td><td><strong>100%</strong></td><td></td></tr>'
++'</tbody></table>';
+
+// ── Sprint × Impact Table ──────────────────────────────────────────────────────────────────────
+const imps=['P0','P1','P2','P3','P4','Unk'];
+const impHdrColors={'P0':'#dc2626','P1':'#ea580c','P2':'#ca8a04','P3':'#16a34a','P4':'#0891b2','Unk':'#9ca3af'};
+function heatColor(v,max){
+  if(!v)return'';
+  const t=Math.min(v/max,1);
+  const r=Math.round(255*(1-t*0.7)+59*t*0.7);
+  const g=Math.round(255*(1-t)+130*t);
+  const b=Math.round(255*(1-t*0.7)+246*t*0.7);
+  return 'background:rgba('+r+','+g+','+b+',0.25);font-weight:700';
+}
+const maxSI=Math.max(...D.top_sprints.map(s=>Object.values(D.sprint_impact[s]||{}).reduce((a,b)=>a+b,0)));
+const siTotals={}; imps.forEach(i=>{ siTotals[i]=D.top_sprints.reduce((a,s)=>a+((D.sprint_impact[s]||{})[i]||0),0); }); const siGrand=Object.values(siTotals).reduce((a,b)=>a+b,0);
+document.getElementById('sprintImpactTable').innerHTML=
+'<table class="heatmap">'
++'<thead><tr><th>Sprint</th>'+imps.map(i=>'<th style="color:'+impHdrColors[i]+'">'+i+'</th>').join('')+'<th>Total</th></tr></thead>'
++'<tbody>'+D.top_sprints.map(s=>{
+  const si=D.sprint_impact[s]||{};
+  const tot=Object.values(si).reduce((a,b)=>a+b,0);
+  return '<tr><td>'+esc(s)+'</td>'+imps.map(i=>'<td style="'+( i!=='Unk'?heatColor(si[i]||0,8):'')+'">'+( si[i]||'')+'</td>').join('')+'<td><strong>'+tot+'</strong></td></tr>';
+}).join('')
++'<tr style="background:#f1f5f9;border-top:2px solid #cbd5e1"><td><strong>Total</strong></td>'+imps.map(i=>'<td><strong style="color:'+impHdrColors[i]+'">'+( siTotals[i]||'')+'</strong></td>').join('')+'<td><strong>'+siGrand+'</strong></td></tr>'
++'</tbody></table>';
+
+// ── POD × Impact Table ───────────────────────────────────────────────────────────────────────
+const podKeys=D.POD_ORD.filter(p=>D.pod_impact[p]);
+const piTotals={}; imps.forEach(i=>{ piTotals[i]=podKeys.reduce((a,p)=>a+((D.pod_impact[p]||{})[i]||0),0); }); const piGrand=Object.values(piTotals).reduce((a,b)=>a+b,0);
+document.getElementById('podImpactTable').innerHTML=
+'<table class="heatmap">'
++'<thead><tr><th>POD</th>'+imps.map(i=>'<th style="color:'+impHdrColors[i]+'">'+i+'</th>').join('')+'<th>Total</th></tr></thead>'
++'<tbody>'+podKeys.map(p=>{
+  const pi=D.pod_impact[p]||{};
+  const tot=Object.values(pi).reduce((a,b)=>a+b,0);
+  return '<tr><td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+(PC[p]||'#94a3b8')+';margin-right:7px"></span>'+esc(p)+'</td>'
+    +imps.map(i=>'<td style="'+heatColor(pi[i]||0,12)+'">'+( pi[i]||'')+'</td>').join('')
+    +'<td><strong>'+tot+'</strong></td></tr>';
+}).join('')
++'<tr style="background:#f1f5f9;border-top:2px solid #cbd5e1"><td><strong>Total</strong></td>'+imps.map(i=>'<td><strong style="color:'+impHdrColors[i]+'">'+( piTotals[i]||'')+'</strong></td>').join('')+'<td><strong>'+piGrand+'</strong></td></tr>'
++'</tbody></table>';
+
+// ── Velocity KPIs ──────────────────────────────────────────────────────────────────────
+const ytdFixed=Object.values(D.monthly_fixed).reduce((a,b)=>a+b,0);
+const ytdRep=Object.values(D.monthly_rep).reduce((a,b)=>a+b,0);
+const ytdMonths=Object.values(D.monthly_fixed).filter(v=>v>0).length;
+const avgFixed=ytdMonths?Math.round(ytdFixed/ytdMonths):0;
+document.getElementById('velocityKpi').innerHTML=
+  '<div class="kpi" style="border-left-color:#16a34a"><div class="kpi-val" style="color:#16a34a">'+ytdFixed+'</div><div class="kpi-lbl">Fixed YTD (2026)</div><div class="kpi-sub">Jan – Mar</div></div>'
+  +'<div class="kpi" style="border-left-color:#dc2626"><div class="kpi-val" style="color:#dc2626">'+ytdRep+'</div><div class="kpi-lbl">Reported YTD (2026)</div><div class="kpi-sub">Jan – Mar</div></div>'
+  +'<div class="kpi" style="border-left-color:#0891b2"><div class="kpi-val" style="color:#0891b2">'+( ytdRep-ytdFixed)+'</div><div class="kpi-lbl">Net Backlog Growth</div><div class="kpi-sub">Reported minus Fixed</div></div>'
+  +'<div class="kpi" style="border-left-color:#7c3aed"><div class="kpi-val" style="color:#7c3aed">'+avgFixed+'</div><div class="kpi-lbl">Avg Fixed / Month</div><div class="kpi-sub">Based on '+ytdMonths+' months</div></div>';
+
+// ── Aging Summary ──────────────────────────────────────────────────────────────────────
+document.getElementById('agingSummary').innerHTML=
+'<table>'
++'<thead><tr><th>Age Range</th><th>Count</th><th>%</th></tr></thead>'
++'<tbody>'+Object.entries(D.age_buckets).map(([k,v])=>
+  '<tr><td>'+k+'</td><td><strong>'+v+'</strong></td><td style="color:var(--mid)">'+( v/D.in_prog*100).toFixed(1)+'%</td></tr>'
+).join('')
++'</tbody></table>'
++'<div style="margin-top:14px;padding:12px 14px;background:#fef9ee;border-left:4px solid #ca8a04;border-radius:6px;font-size:13px">'
++'<strong>Avg age:</strong> '+D.avg_age+' days &nbsp;·&nbsp; '
++'<strong>'+( D.age_buckets['31–60d']+D.age_buckets['61–90d']+D.age_buckets['90+d'])+'</strong> tickets older than 30 days'
++'</div>';
+
+// ── Observations ──────────────────────────────────────────────────────────────────────
+const obs=[
+  {cls:'warn',icon:'⚠️',title:D.stale+' Stale Tickets Require Sprint Reassignment',
+   body:D.stale+' in-progress tickets are still assigned to closed/done sprints. These should be reassigned to active or future sprints to maintain pipeline hygiene.'},
+  {cls:'warn',icon:'🔴',title:(D.ip_impact['P0']||0)+' Critical (P0) Bugs Currently In-Progress',
+   body:'14 P0 tickets affecting core functionality for strategic/at-risk accounts remain unresolved. Platform Pod carries 4 P0s, S. Growth Pod 7 P0s, Nurture Pod 3 P0s.'},
+  {cls:'info',icon:'📈',title:'Fix Velocity Accelerating in 2026',
+   body:'March 2026 saw 99 tickets resolved — the highest monthly fix rate since the year began. Jan: 41, Feb: 97, Mar: 99. However, reported tickets are declining (Jan: 138, Feb: 110, Mar: 58), suggesting improved triage quality or reduced incoming volume.'},
+  {cls:'warn',icon:'📦',title:'High Backlog Accumulation — Awaiting Sprint Inclusion',
+   body:'51 of 100 in-progress tickets (51%) are in "Awaiting Sprint Inclusion" status. S. Growth Pod has 25 tickets awaiting sprint placement. Prioritisation and sprint planning sessions are needed urgently.'},
+  {cls:'warn',icon:'🕐',title:'43% of In-Progress Tickets Older Than 30 Days',
+   body:(D.age_buckets['31–60d']+D.age_buckets['61–90d']+D.age_buckets['90+d'])+' tickets exceed 30 days in-flight (avg: '+D.avg_age+' days). '+D.age_buckets['90+d']+' tickets are 90+ days old. Long cycle times increase customer dissatisfaction risk.'},
+  {cls:'info',icon:'📱',title:'Staff App Dominates Bug Reports (68% of 2026 Tickets)',
+   body:'Staff App accounts for 207 out of ~306 2026 tickets. Integrate App is second with 45. Focus areas: Staff App reliability and SIS integrations (Wonde, Veracross, Blackbaud, FACTS, TASS).'},
+  {cls:'good',icon:'✅',title:'237 Tickets Resolved in 2026 (Jan–Mar)',
+   body:'Strong resolution rate YTD at 237 fixes across 3 months. If velocity is maintained, projected full-year resolution could exceed 900 tickets assuming sustained throughput.'},
+  {cls:'info',icon:'🎯',title:'Recommendation: Weekly P0/P1 Triage Cadence',
+   body:'With 14 P0s and 32 P1s (46% of in-progress), a weekly cross-pod triage call focused on critical impact tickets would reduce time-to-resolution for the highest business impact issues.'},
+];
+document.getElementById('obsList').innerHTML=obs.map(o=>
+  '<li class="obs-item '+o.cls+'">'
+  +'<div class="obs-icon">'+o.icon+'</div>'
+  +'<div><div class="obs-title">'+o.title+'</div><div class="obs-body">'+o.body+'</div></div>'
+  +'</li>'
+).join('');
+
+// ── Dev Pipeline Drill-Down ─────────────────────────────────────────────────────────────────────────
+// Summary bar
+const sb=document.getElementById('devSummaryBar');
+const sbItems=[{val:D.dev_total,lbl:'TOTAL DEV PIPELINE',col:'#f8fafc'},...D.POD_ORD.filter(p=>D.pod_totals[p]).map(p=>({val:D.pod_totals[p],lbl:p.toUpperCase(),col:PC[p]}))];
+sbItems.forEach((item,i)=>{
+  if(i>0){ const div=document.createElement('div'); div.style.cssText='width:1px;background:#334155;margin:0 20px'; sb.appendChild(div); }
+  const el=document.createElement('div'); el.style.cssText='display:flex;flex-direction:column';
+  el.innerHTML='<span style="font-size:28px;font-weight:800;color:'+item.col+';line-height:1">'+item.val+'</span><span style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-top:3px">'+item.lbl+'</span>';
+  sb.appendChild(el);
+});
+
+// Populate filter dropdowns
+const allImps=['P0','P1','P2','P3','P4','Unk'];
+D.POD_ORD.filter(p=>D.tree[p]).forEach(p=>{ const o=document.createElement('option'); o.value=p; o.textContent=p; document.getElementById('fPod').appendChild(o); });
+allImps.forEach(i=>{ const o=document.createElement('option'); o.value=i; o.textContent=i; document.getElementById('fImpact').appendChild(o); });
+D.STATUS_ORD.forEach(s=>{ const o=document.createElement('option'); o.value=s; o.textContent=s; document.getElementById('fStatus').appendChild(o); });
+const allSprintsSet=new Set();
+D.POD_ORD.forEach(pod=>{ if(!D.tree[pod])return; Object.values(D.tree[pod]).forEach(sd=>{ Object.keys(sd).forEach(sp=>allSprintsSet.add(sp)); }); });
+[...allSprintsSet].sort().forEach(sp=>{ const o=document.createElement('option'); o.value=sp; o.textContent=sp; document.getElementById('fSprint').appendChild(o); });
+
+// Build drill-down DOM
+const container=document.getElementById('podDrilldown');
+D.POD_ORD.forEach(pod=>{
+  if(!D.tree[pod])return;
+  const pt=D.pod_totals[pod]||0;
+  const pct=Math.round(pt/D.dev_total*100);
+  const col=PC[pod]||'#6b7280';
+  const card=document.createElement('div'); card.className='pod-card'; card.dataset.pod=pod;
+  card.innerHTML=
+    '<div class="pod-hdr" style="background:'+col+'" onclick="togglePod(this)">'
+    +'<span class="pod-hdr-title">'+esc(pod)+'</span>'
+    +'<span class="pod-badge">'+pt+' tickets &nbsp;·&nbsp; '+pct+'% of Dev Pipeline</span>'
+    +'<span class="pod-chevron open">⌄</span>'
+    +'</div>'
+    +'<div class="pod-body" id="body_'+pod.replace(/\W/g,'_')+'"></div>';
+  container.appendChild(card);
+  const body=card.querySelector('.pod-body');
+  D.STATUS_ORD.forEach(stat=>{
+    if(!D.tree[pod][stat])return;
+    const sc2=Object.values(D.tree[pod][stat]).flat().length;
+    const sp2=Math.round(sc2/pt*100);
+    const scol=SC[stat]||'#334155';
+    const sh=document.createElement('div');
+    sh.innerHTML='<span class="status-hdr" style="background:'+scol+'" data-status="'+esc(stat)+'">'+esc(stat)+'<span class="sc">('+sc2+', '+sp2+'%)</span></span>';
+    body.appendChild(sh);
+    Object.keys(D.tree[pod][stat]).forEach(sprint=>{
+      const bugs=D.tree[pod][stat][sprint];
+      const catS=sprint_cat_js(sprint);
+      const staleTag=(catS>=3&&sprint!=='(No Sprint)')?'<span class="stale">STALE</span>':'';;
+      const sdiv=document.createElement('div'); sdiv.dataset.sprintBlock=sprint;
+      sdiv.innerHTML='<div class="sprint-lbl">'+esc(sprint)+staleTag+'</div>'
+        +'<table class="bug-tbl">'
+        +'<thead><tr><th style="width:88%">Bug Name</th><th>Impact</th></tr></thead>'
+        +'<tbody>'+bugs.map(b=>
+          '<tr class="bug-row" data-impact="'+b.impact+'" data-status="'+esc(stat)+'" data-sprint="'+esc(sprint)+'" data-pod="'+esc(pod)+'">'
+          +'<td>'+esc(b.name)+'</td>'
+          +'<td>'+impBadge(b.impact)+'</td>'
+          +'</tr>'
+        ).join('')
+        +'</tbody></table>';
+      body.appendChild(sdiv);
+    });
+  });
+});
+
+function sprint_cat_js(s){
+  s=(s||''). toLowerCase();
+  if(s.includes('[active'))return 0;
+  if(s.includes('[future'))return 1;
+  if(s.includes('[backlog')||s.trim()==='backlog')return 2;
+  if(s.includes('[done')||s.includes('[closed'))return 3;
+  if(!s.trim())return 5;
+  return 4;
+}
+
+function togglePod(hdr){
+  const body=hdr.nextElementSibling;
+  const chev=hdr.querySelector('.pod-chevron');
+  const open=body.style.display!=='none';
+  body.style.display=open?'none':'block';
+  chev.classList.toggle('open',!open);
+}
+
+function applyFilters(){
+  const fP=document.getElementById('fPod').value;
+  const fI=document.getElementById('fImpact').value;
+  const fS=document.getElementById('fStatus').value;
+  const fSp=document.getElementById('fSprint').value;
+  let vis=0;
+  document.querySelectorAll('.bug-row').forEach(row=>{
+    const hide=(fP&&row.dataset.pod!==fP)||(fI&&row.dataset.impact!==fI)||(fS&&row.dataset.status!==fS)||(fSp&&row.dataset.sprint!==fSp);
+    row.toggleAttribute('data-hidden',hide);
+    if(!hide)vis++;
+  });
+  document.querySelectorAll('[data-sprint-block]').forEach(sdiv=>{
+    sdiv.style.display=sdiv.querySelectorAll('.bug-row:not([data-hidden])').length?'':' none';
+  });
+  document.querySelectorAll('.pod-card').forEach(card=>{
+    const v=card.querySelectorAll('.bug-row:not([data-hidden])').length;
+    card.style.display=v?'':' none';
+  });
+  document.getElementById('fCount').textContent='Showing '+vis+' bug'+(vis!==1?'s':'');
+}
+function resetFilters(){
+  ['fPod','fImpact','fStatus','fSprint'].forEach(id=>document.getElementById(id).value='');
+  document.querySelectorAll('.bug-row').forEach(r=>r.removeAttribute('data-hidden'));
+  document.querySelectorAll('[data-sprint-block]').forEach(s=>s.style.display='');
+  document.querySelectorAll('.pod-card').forEach(c=>c.style.display='');
+  document.getElementById('fCount').textContent='';
+}
+['fPod','fImpact','fStatus','fSprint'].forEach(id=>document.getElementById(id).addEventListener('change',applyFilters));
+
+// ── Charts ──────────────────────────────────────────────────────────────────────
+const MONTHS_LABEL=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// Status All Donut
+new Chart(document.getElementById('cStatusAll'),{
+  type:'doughnut',
+  data:{
+    labels:Object.keys(D.status_all),
+    datasets:[{data:Object.values(D.status_all),
+      backgroundColor:['#16a34a','#dc2626','#6b7280','#7c3aed','#1d4ed8','#94a3b8','#ea580c','#1a7f5a','#6d28d9','#b45309','#0891b2','#ca8a04','#0f172a','#475569','#475569'],
+      borderWidth:2,borderColor:'#fff'}]
+  },
+  options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'right',labels:{boxWidth:10,font:{size:11},padding:6}}}}
+});
+
+// POD Bar
+new Chart(document.getElementById('cPodAll'),{
+  type:'bar',
+  data:{
+    labels:Object.keys(D.ip_pod),
+    datasets:[{label:'Tickets',data:Object.values(D.ip_pod),
+      backgroundColor:Object.keys(D.ip_pod).map(p=>PC[p]||'#6b7280'),borderRadius:6}]
+  },
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'#f1f5f9'}},x:{grid:{display:false}}}}
+});
+
+// Impact Bar
+new Chart(document.getElementById('cImpactAll'),{
+  type:'bar',
+  data:{
+    labels:['P0','P1','P2','P3','P4','Unk'],
+    datasets:[{label:'Tickets',data:['P0','P1','P2','P3','P4','Unk'].map(i=>D.ip_impact[i]||0),
+      backgroundColor:['P0','P1','P2','P3','P4','Unk'].map(i=>IC[i]),borderRadius:6}]
+  },
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'#f1f5f9'}},x:{grid:{display:false}}}}
+});
+
+// IP Status horizontal bar
+const ipSorted=Object.entries(D.ip_status).sort((a,b)=>b[1]-a[1]);
+new Chart(document.getElementById('cIPStatus'),{
+  type:'bar',
+  data:{
+    labels:ipSorted.map(e=>e[0]),
+    datasets:[{label:'Tickets',data:ipSorted.map(e=>e[1]),
+      backgroundColor:ipSorted.map(e=>SC[e[0]]||'#94a3b8'),borderRadius:6}]
+  },
+  options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,grid:{color:'#f1f5f9'}},y:{grid:{display:false}}}}
+});
+
+// IP Pod
+const podSorted=D.POD_ORD.filter(p=>D.ip_pod[p]);
+new Chart(document.getElementById('cIPPod'),{
+  type:'bar',
+  data:{
+    labels:podSorted,
+    datasets:[{label:'Tickets',data:podSorted.map(p=>D.ip_pod[p]||0),
+      backgroundColor:podSorted.map(p=>PC[p]||'#6b7280'),borderRadius:6}]
+  },
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'#f1f5f9'}},x:{grid:{display:false}}}}
+});
+
+// App Area 2026
+new Chart(document.getElementById('cAppArea'),{
+  type:'bar',
+  data:{
+    labels:Object.keys(D.app_area),
+    datasets:[{label:'Tickets (2026)',data:Object.values(D.app_area),
+      backgroundColor:'#0891b2',borderRadius:6}]
+  },
+  options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,grid:{color:'#f1f5f9'}},y:{grid:{display:false}}}}
+});
+
+// App Area in-progress
+new Chart(document.getElementById('cAppInp'),{
+  type:'bar',
+  data:{
+    labels:Object.keys(D.app_inp),
+    datasets:[{label:'In-Progress',data:Object.values(D.app_inp),
+      backgroundColor:'#7c3aed',borderRadius:6}]
+  },
+  options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,grid:{color:'#f1f5f9'}},y:{grid:{display:false}}}}
+});
+
+// Velocity — only months with data
+const activeMonths=MONTHS_LABEL.filter(m=>(D.monthly_fixed[m]||0)>0||(D.monthly_rep[m]||0)>0);
+new Chart(document.getElementById('cVelocity'),{
+  type:'bar',
+  data:{
+    labels:activeMonths,
+    datasets:[
+      {label:'Reported',data:activeMonths.map(m=>D.monthly_rep[m]||0),
+       backgroundColor:'rgba(220,38,38,.75)',borderRadius:5,order:2},
+      {label:'Fixed',data:activeMonths.map(m=>D.monthly_fixed[m]||0),
+       backgroundColor:'rgba(22,163,74,.85)',borderRadius:5,order:1}
+    ]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{
+      legend:{position:'top',labels:{boxWidth:12,padding:16}},
+      tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+ctx.parsed.y+' tickets'}}
+    },
+    scales:{
+      y:{beginAtZero:true,grid:{color:'#f1f5f9'},ticks:{stepSize:20},title:{display:true,text:'Tickets',color:'#94a3b8',font:{size:11}}},
+      x:{grid:{display:false}}
+    }
+  }
+});
+
+// Aging
+const ageBucketKeys=Object.keys(D.age_buckets);
+new Chart(document.getElementById('cAging'),{
+  type:'bar',
+  data:{
+    labels:ageBucketKeys,
+    datasets:[{label:'Tickets',data:ageBucketKeys.map(k=>D.age_buckets[k]),
+      backgroundColor:ageBucketKeys.map((_,i)=>{const c=['#0891b2','#1d4ed8','#7c3aed','#ea580c','#dc2626','#991b1b']; return c[i]||'#9ca3af';}),borderRadius:6}]
+  },
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'#f1f5f9'}},x:{grid:{display:false}}}}
+});
+</script>
+</body>
+</html>
